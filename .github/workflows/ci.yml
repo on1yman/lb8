@@ -68,19 +68,33 @@ jobs:
         
       - name: Run container and test
         run: |
-          docker run -d -v "$(pwd)/logs/:/home/logs/" --name logger-container logger
-          sleep 5  
-          docker stop logger-container
-          docker rm logger-container
+          # Запускаем в интерактивном режиме с подключением STDIN
+          echo -e "1\n-5\n6" | docker run -i -v "$(pwd)/logs/:/home/logs/" --name logger-container logger
+          # Даем время на запись логов
+          sleep 3
+          
+      - name: Debug container logs
+        run: |
+          echo "Container logs:"
+          docker logs logger-container || true
+          echo "Contents of logs directory:"
+          ls -la logs/
           
       - name: Check logs existence
         run: |
           if [ ! -f logs/log.txt ]; then
-            echo "Log file not found!"
+            echo "Log file not found! Dumping container info:"
+            docker inspect logger-container
             exit 1
           fi
           echo "Log file content:"
           cat logs/log.txt
+          
+      - name: Cleanup container
+        if: always()
+        run: |
+          docker stop logger-container || true
+          docker rm logger-container || true
           
       - name: Upload logs artifact
         uses: actions/upload-artifact@v4
