@@ -11,14 +11,11 @@ RUN apt-get update && \
 COPY . /app
 WORKDIR /app
 
-RUN cmake -H. -B_build \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=_install && \
-    cmake --build _build && \
-    cmake --build _build --target install
+RUN cmake -H. -B_build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build _build
 
 ENV LOG_PATH=/home/logs/log.txt
 VOLUME /home/logs
 
-WORKDIR /app/_install/bin
-ENTRYPOINT ["./demo"]
+WORKDIR /app/_build
+ENTRYPOINT ["./solver_application/solver_app"]
