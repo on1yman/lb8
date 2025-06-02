@@ -1,84 +1,45 @@
 name: CI workflow
 
-on: 
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+on: [push, pull_request]
 
 jobs:
-  build_on_linux:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - cpp_comp: g++
-            c_comp: gcc
-          - cpp_comp: clang++
-            c_comp: clang
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Prepare build
-        run: cmake -H. -B_build -DCMAKE_CXX_COMPILER=${{matrix.cpp_comp}} -DCMAKE_C_COMPILER=${{matrix.c_comp}}
-      
-      - name: Build
-        run: cmake --build _build
-      
-      - name: Test programs
-        run: |
-          echo "1 -5 6" | _build/solver_application/solver_app
-          _build/hello_world_application/hello
-
-  build_on_windows:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Prepare build
-        run: cmake . -B_build
-      
-      - name: Build
-        run: cmake --build _build
-      
-      - name: Test programs
-        run: |
-          echo "1 -5 6" | _build\solver_application\Debug\solver_app
-          _build\hello_world_application\Debug\hello
-
   docker_build_and_run:
     runs-on: ubuntu-latest
-    needs: [build_on_linux, build_on_windows]
-    
     steps:
       - uses: actions/checkout@v4
       
       - name: Build Docker image
         run: docker build -t logger .
         
-      - name: Run container and capture output
-        id: run_container
+      - name: Test with valid input
         run: |
-          mkdir -p logs
-          # Run container and save output
-          docker run --rm -v "$(pwd)/logs:/home/logs" logger > logs/output.txt 2>&1
+          echo "Testing equation solver:"
+          output=$(echo "1 -5 6" | docker run -i --rm logger)
+          echo "$output"
           
-      - name: Process and display results
-        run: |
-          echo "Container output:"
-          cat logs/output.txt
-          # Check for valid solution
-          if grep -q "nan" logs/output.txt; then
-            echo "ERROR: Invalid solution detected"
+          # Проверяем корректность решения
+          if [[ "$output" != *"nan"* && "$output" == *"x1 ="* && "$output" == *"x2 ="* ]]; then
+            echo "Valid solution found"
+          else
+            echo "ERROR: Invalid solution detected!"
+            echo "Debug info:"
+            echo "1. Checking input parsing..."
+            echo "1 2 3" | docker run -i --rm logger
+            echo "2. Checking zero discriminant..."
+            echo "1 2 1" | docker run -i --rm logger
             exit 1
           fi
           
-      - name: Upload output as artifact
+      - name: Save successful output
+        if: success()
+        run: |
+          mkdir -p logs
+          echo "1 -5 6" | docker run -i --rm logger > logs/solution.txt
+          echo "Stored solution:"
+          cat logs/solution.txt
+          
+      - name: Upload results
         uses: actions/upload-artifact@v4
         with:
-          name: solver-output
-          path: logs/output.txt
+          name: solver-results
+          path: logs/solution.txt
