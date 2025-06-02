@@ -52,3 +52,38 @@ jobs:
 
       - name: status info
         run: echo ${{ job.status }} is status of job
+
+  docker_build_and_run:
+    runs-on: ubuntu-latest
+    needs: [build_on_linux, build_on_windows]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Docker image
+        run: docker build -t logger .
+        
+      - name: Create logs directory
+        run: mkdir -p logs
+        
+      - name: Run container and test
+        run: |
+          docker run -d -v "$(pwd)/logs/:/home/logs/" --name logger-container logger
+          sleep 5  
+          docker stop logger-container
+          docker rm logger-container
+          
+      - name: Check logs existence
+        run: |
+          if [ ! -f logs/log.txt ]; then
+            echo "Log file not found!"
+            exit 1
+          fi
+          echo "Log file content:"
+          cat logs/log.txt
+          
+      - name: Upload logs artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-logs
+          path: logs/log.txt
