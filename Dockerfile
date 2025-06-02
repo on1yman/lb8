@@ -14,7 +14,10 @@ WORKDIR /app
 RUN cmake -H. -B_build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build _build
 
-RUN mkdir -p /home/logs && chmod 777 /home/logs
+RUN mkdir -p /home/logs && \
+    chmod 777 /home/logs && \
+    touch /home/logs/log.txt && \
+    chmod 666 /home/logs/log.txt
 
 ENV LOG_PATH=/home/logs/log.txt
 VOLUME /home/logs
