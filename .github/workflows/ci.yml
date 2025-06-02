@@ -64,15 +64,18 @@ jobs:
         id: run_container
         run: |
           mkdir -p logs
-          # Запускаем контейнер и сохраняем вывод в файл
+          # Run container and save output
           docker run --rm -v "$(pwd)/logs:/home/logs" logger > logs/output.txt 2>&1
           
-      - name: Display and save results
+      - name: Process and display results
         run: |
           echo "Container output:"
           cat logs/output.txt
-          # Сохраняем вывод как артефакт
-          echo "results=$(cat logs/output.txt)" >> $GITHUB_OUTPUT
+          # Check for valid solution
+          if grep -q "nan" logs/output.txt; then
+            echo "ERROR: Invalid solution detected"
+            exit 1
+          fi
           
       - name: Upload output as artifact
         uses: actions/upload-artifact@v4
