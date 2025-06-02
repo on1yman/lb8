@@ -14,8 +14,10 @@ WORKDIR /app
 RUN cmake -H. -B_build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build _build
 
+RUN mkdir -p /home/logs && chmod 777 /home/logs
+
 ENV LOG_PATH=/home/logs/log.txt
 VOLUME /home/logs
 
-WORKDIR /app/_build
-ENTRYPOINT ["./solver_application/solver_app"]
+WORKDIR /app/_build/solver_application
+ENTRYPOINT ["./solver_app"]

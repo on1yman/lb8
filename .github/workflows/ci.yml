@@ -66,25 +66,29 @@ jobs:
       - name: Create logs directory
         run: mkdir -p logs
         
-      - name: Run container and test
+      - name: Run container with input
         run: |
-          # Запускаем в интерактивном режиме с подключением STDIN
+          # Запускаем контейнер с передачей входных данных
           echo -e "1\n-5\n6" | docker run -i -v "$(pwd)/logs/:/home/logs/" --name logger-container logger
-          # Даем время на запись логов
-          sleep 3
+          sleep 1  # Даем время на запись логов
           
-      - name: Debug container logs
+      - name: Debug container output
         run: |
           echo "Container logs:"
           docker logs logger-container || true
           echo "Contents of logs directory:"
           ls -la logs/
+          echo "Trying to read log file:"
+          cat logs/log.txt || echo "Log file not found"
           
-      - name: Check logs existence
+      - name: Verify logs
         run: |
           if [ ! -f logs/log.txt ]; then
-            echo "Log file not found! Dumping container info:"
-            docker inspect logger-container
+            echo "Error: Log file was not created!"
+            echo "Possible reasons:"
+            echo "1. LOG_PATH in container is not set correctly"
+            echo "2. Application doesn't have permissions to write to /home/logs/"
+            echo "3. Application is not actually writing to the log file"
             exit 1
           fi
           echo "Log file content:"
@@ -97,6 +101,7 @@ jobs:
           docker rm logger-container || true
           
       - name: Upload logs artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: docker-logs
